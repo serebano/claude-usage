@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.0 — 2026-10-17
+
+- pause-guard now holds tool calls while paused and releases them after the reset, so work resumes automatically where it stopped. `CLAUDE_USAGE_GUARD=block` keeps the old stop-the-turn behaviour.
+- Hook timeout in the examples raised to 7 days so a hold can outlast a weekly reset.
+
 ## 1.2.0 — 2026-10-17
 
 - Styled terminal output: a coloured bar per limit (green < 50 %, yellow < 80 %, red ≥ 80 %). Piped output and `--plain` keep the one-line format; `NO_COLOR` drops colours.

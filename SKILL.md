@@ -55,16 +55,18 @@ It writes `~/.claude-usage/state.json` (`status: ok|paused`, `reason`, `percent`
 
 ## Pause guard (PreToolUse hook)
 
-`hooks/pause-guard.mjs` blocks every tool call while the state is `paused` and the reset is
-in the future, with the message "Usage limit 95% reached — paused until <time>". It reads
-only the local state file and allows everything if the file is missing, corrupt or stale.
-When a tool call is blocked by it: stop, do not retry, summarise where you stopped.
+`hooks/pause-guard.mjs` holds every tool call while the state is `paused` and the reset is
+in the future, then lets it run once the monitor reports `ok` (or the reset has passed).
+Sessions and subagents pause at 95% and continue by themselves after the reset; nothing
+is lost. It reads only the local state file and allows everything if the file is missing,
+corrupt or stale. The long hook `timeout` lets a hold last until a weekly reset.
+`CLAUDE_USAGE_GUARD=block` stops the turn instead (exit 2); `off` disables it.
 
 Enable it only when the user asks. Add to `settings.json` (see `examples/settings.hooks.json`):
 
 ```json
 { "hooks": { "PreToolUse": [ { "matcher": "*", "hooks": [
-  { "type": "command", "command": "node ~/.claude/skills/claude-usage/hooks/pause-guard.mjs", "timeout": 5 }
+  { "type": "command", "command": "node ~/.claude/skills/claude-usage/hooks/pause-guard.mjs", "timeout": 604800 }
 ] } ] } }
 ```
 
