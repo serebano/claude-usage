@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd agent template. Replace __NODE__ (output of `command -v node`),
+  __SKILL_DIR__ (where this repo lives) and __HOME__, then:
+    cp examples/com.example.claude-usage-monitor.plist ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.example.claude-usage-monitor.plist
+  Stop: launchctl bootout gui/$(id -u)/com.example.claude-usage-monitor
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.example.claude-usage-monitor</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__NODE__</string>
+    <string>__SKILL_DIR__/bin/claude-usage-monitor.mjs</string>
+    <string>--config-dir</string><string>__HOME__/.claude</string>
+    <string>--threshold</string><string>95</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>30</integer>
+  <key>StandardOutPath</key><string>__HOME__/.claude-usage/monitor.out.log</string>
+  <key>StandardErrorPath</key><string>__HOME__/.claude-usage/monitor.err.log</string>
+</dict>
+</plist>

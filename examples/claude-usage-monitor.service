@@ -1,0 +1,15 @@
+# systemd user unit template. Replace __SKILL_DIR__, then:
+#   cp examples/claude-usage-monitor.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload && systemctl --user enable --now claude-usage-monitor
+#   journalctl --user -u claude-usage-monitor -f
+[Unit]
+Description=Claude Code usage monitor (pause at threshold, resume after reset)
+After=network-online.target
+
+[Service]
+ExecStart=/usr/bin/env node __SKILL_DIR__/bin/claude-usage-monitor.mjs --threshold 95
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=default.target

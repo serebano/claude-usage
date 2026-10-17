@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "node ~/.claude/skills/claude-usage/hooks/pause-guard.mjs", "timeout": 5 }
+        ]
+      }
+    ]
+  }
+}

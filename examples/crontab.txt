@@ -1,0 +1,2 @@
+# Alternative to a long-running monitor: check every 2 minutes.
+*/2 * * * * /usr/bin/env node __SKILL_DIR__/bin/claude-usage-monitor.mjs --once >/dev/null 2>&1

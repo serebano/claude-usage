@@ -1,0 +1,16 @@
+{
+  "name": "claude-usage",
+  "version": "1.0.0",
+  "description": "Query Claude Code subscription usage (session, weekly, per-model) and pause work at a threshold until the limit resets.",
+  "type": "module",
+  "bin": {
+    "claude-usage": "bin/claude-usage.mjs",
+    "claude-usage-monitor": "bin/claude-usage-monitor.mjs"
+  },
+  "files": ["bin/", "lib/", "hooks/", "examples/", "SKILL.md", "README.md", "CHANGELOG.md", "LICENSE"],
+  "scripts": { "test": "node --test test/*.test.mjs" },
+  "engines": { "node": ">=18.17" },
+  "keywords": ["claude", "claude-code", "usage", "rate-limit", "skill", "anthropic"],
+  "repository": { "type": "git", "url": "git+https://github.com/serebano/claude-usage.git" },
+  "license": "MIT"
+}
