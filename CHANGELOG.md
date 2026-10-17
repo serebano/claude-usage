@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0 — 2026-10-17
+
+- Session (5-hour) reset is shown relative: "resets in 1 hr 31 min".
+
 ## 1.0.1 — 2026-10-17
 
 - pause-guard: round the resume time to the nearest minute, matching `claude-usage`.

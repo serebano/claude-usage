@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import {
-  keychainServiceNames, parseUsage, formatLine, formatReset, decide, nextIntervalSec,
+  keychainServiceNames, parseUsage, formatLine, formatReset, formatResetIn, decide, nextIntervalSec,
   fetchUsage, readCredentials, AuthError, NetworkError, normalizeDir,
 } from '../lib/core.mjs';
 
@@ -107,4 +107,11 @@ test('readCredentials: .credentials.json on non-macOS', () => {
   writeFileSync(join(dir, '.credentials.json'), JSON.stringify({ claudeAiOauth: { accessToken: 'test-token', expiresAt: 0, subscriptionType: 'max' } }));
   const c = readCredentials(dir, { platform: 'linux' });
   assert.equal(c.source, 'file'); assert.equal(c.subscriptionType, 'max');
+});
+
+test('formatResetIn: session reset as relative time', () => {
+  const now = new Date(2030, 0, 7, 15, 0);
+  assert.equal(formatResetIn(new Date(2030, 0, 7, 16, 31), now), 'in 1 hr 31 min');
+  assert.equal(formatResetIn(new Date(2030, 0, 7, 15, 45), now), 'in 45 min');
+  assert.equal(formatResetIn(new Date(2030, 0, 7, 17, 0), now), 'in 2 hr');
 });

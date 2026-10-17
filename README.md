@@ -8,7 +8,7 @@ Claude Code skill, so Claude can check its own quota.
 
 ```
 $ claude-usage
-session 28% (resets 16:30) · week 25% (resets Thu 08:00) · Fable 7%
+session 28% (resets in 1 hr 31 min) · week 25% (resets Thu 08:00) · Fable 7%
 ```
 
 ## Quick use

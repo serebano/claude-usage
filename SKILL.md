@@ -15,7 +15,7 @@ node "<skill dir>/bin/claude-usage.mjs" --json
 ```
 
 Report one short line: each limit's percent and its reset time in local time, for example
-`session 28% (resets 16:30) · week 25% (resets Thu 08:00) · Fable 7%`. Without `--json` it
+`session 28% (resets in 1 hr 31 min) · week 25% (resets Thu 08:00) · Fable 7%`. Without `--json` it
 prints that line itself. If `CLAUDE_CONFIG_DIR` is set it is used; otherwise pass
 `--config-dir <dir>`. `--all` checks every `~/.claude*` config dir.
 
