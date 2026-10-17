@@ -55,7 +55,7 @@ It writes `~/.claude-usage/state.json` (`status: ok|paused`, `reason`, `percent`
 
 ## Pause guard (PreToolUse hook)
 
-`hooks/pause-guard.mjs` holds every tool call while the state is `paused` and the reset is
+`hooks/pause-guard.mjs` holds every tool call while the state is `paused` (at 95%, earlier when the burn rate says the next check would be too late, or when usage can't be read near the limit) and the reset is
 in the future, then lets it run once the monitor reports `ok` (or the reset has passed).
 Sessions and subagents pause at 95% and continue by themselves after the reset; nothing
 is lost. It reads only the local state file and allows everything if the file is missing,

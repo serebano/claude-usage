@@ -33,7 +33,7 @@ if (args.help) { console.log(HELP); process.exit(0); }
 async function query(dir) {
   try {
     const creds = readCredentials(dir);
-    const u = await getUsage(dir, { maxAgeMs: args.fresh ? 0 : 60e3 });
+    const u = await getUsage(dir, { maxAgeMs: args.fresh ? 0 : args.all ? 5 * 60e3 : 60e3 });
     const parsed = parseUsage(u.json);
     return { dir, parsed, subscription: creds.subscriptionType };
   } catch (e) {
@@ -42,7 +42,13 @@ async function query(dir) {
 }
 
 const dirs = args.all ? findConfigDirs() : [args['config-dir'] ? normalizeDir(args['config-dir']) : defaultConfigDir()];
-const results = await Promise.all(dirs.map(query));
+// One account at a time, spaced out: a burst across many accounts is what makes the
+// usage endpoint answer 429. --all also reuses answers up to 5 minutes old.
+const results = [];
+for (const [i, d] of dirs.entries()) {
+  if (i && args.all) await new Promise((r) => setTimeout(r, 1500));
+  results.push(await query(d));
+}
 
 if (args.json) {
   const out = results.map((r) => r.error

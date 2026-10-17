@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.5.0 — 2026-10-17
+
+Fixes a missed auto-pause: the window burned from 89% to 100% while the monitor was blind on HTTP 429s.
+- **Rate-aware pause:** the monitor tracks each limit's burn rate (%/min) and pauses when the next check would come too late, not only at the threshold.
+- **Unknown near the limit = pause:** if the last reading was ≥85% and the endpoint can't be read (429/network) for 3 min, it pauses until a fresh safe reading.
+- **A fresh reading decides:** a pause lifts as soon as a reading shows real headroom (10 points under the threshold, e.g. after an account switch), not only at the reset time.
+- **Warn at 80%:** a notification, and the pause guard refuses NEW subagents (Agent/Task) while current work continues.
+- **Guard fails open on a stale state** (monitor not updating for 20 min).
+- **Gentler polling:** 5 min under 50%, 3 min to 80%, 90 s to 90%, 60 s above; the 429 backoff is capped at 3 min near the limit.
+- **`--all` is sequential** (1.5 s apart) and reuses answers up to 5 min old; a burst across accounts was what triggered the 429s.
+
 ## 1.4.0 — 2026-10-17
 
 - Shared 60 s on-disk cache (`~/.claude-usage/cache/`): the CLI, skill, monitor and other tools reuse one recent answer instead of each calling the rate-limited endpoint. `--fresh` bypasses it.

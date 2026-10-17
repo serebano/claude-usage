@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import {
-  keychainServiceNames, parseUsage, formatLine, formatReset, formatResetIn, formatPretty, decide, nextIntervalSec,
+  keychainServiceNames, parseUsage, formatLine, formatReset, formatResetIn, formatPretty, decide, decideUnknown, nextIntervalSec,
   fetchUsage, readCredentials, AuthError, NetworkError, normalizeDir,
 } from '../lib/core.mjs';
 
@@ -73,10 +73,12 @@ test('decide: scoped model limit counts unless ignored', () => {
   assert.equal(decide(null, reading(10, 10, 97), { now, includeScoped: false }).transition, null);
 });
 
-test('decide: stays paused before reset, resumes after reset when below threshold', () => {
-  const paused = { status: 'paused', resumes_at: '2030-01-07T13:30:00.000Z', percent: 96 };
-  const before = decide(paused, reading(20, 40), { now: new Date('2030-01-07T13:00:00Z') });
+test('decide: stays paused near the limit before reset, resumes after reset or with real headroom', () => {
+  const paused = { status: 'paused', kind: 'limit', resumes_at: '2030-01-07T13:30:00.000Z', percent: 96 };
+  const before = decide(paused, reading(90, 40), { now: new Date('2030-01-07T13:00:00Z') });
   assert.equal(before.state.status, 'paused'); assert.equal(before.transition, null);
+  const headroom = decide(paused, reading(20, 40), { now: new Date('2030-01-07T13:00:00Z') });
+  assert.equal(headroom.state.status, 'ok'); assert.equal(headroom.transition, 'resume');
   const after = decide(paused, reading(0, 40), { now: new Date('2030-01-07T13:31:00Z') });
   assert.equal(after.state.status, 'ok'); assert.equal(after.transition, 'resume');
   const still = decide(paused, reading(99, 40, 0, '2030-01-07T18:30:00Z'), { now: new Date('2030-01-07T13:31:00Z') });
@@ -84,7 +86,7 @@ test('decide: stays paused before reset, resumes after reset when below threshol
 });
 
 test('nextIntervalSec: faster near threshold, wakes after reset when paused', () => {
-  assert.equal(nextIntervalSec({ percent: 20 }, { base: 120 }), 120);
+  assert.equal(nextIntervalSec({ percent: 20 }, { base: 120 }), 300);
   assert.equal(nextIntervalSec({ percent: 85 }, { base: 120 }), 90);
   assert.equal(nextIntervalSec({ percent: 92 }, { base: 120 }), 60); // never below 60 s (endpoint 429s)
   const now = new Date('2030-01-07T13:29:00Z');
@@ -151,4 +153,35 @@ test('getUsage: fresh cache is reused; on 429 a recent cache is returned as stal
   assert.equal(fresh.cached, true); assert.equal(called, 0);
   assert.equal(fresh.json.five_hour.utilization, 42);
   delete process.env.CLAUDE_USAGE_CACHE_DIR;
+});
+
+const lim = (session, t) => ({ limits: [{ label: 'session', kind: 'session', percent: session, resetsAt: t, scoped: false }] });
+test('decide: pauses early when the burn rate would cross the threshold before the next check', () => {
+  const t0 = new Date('2030-01-07T12:00:00Z'), reset = new Date('2030-01-07T14:00:00Z');
+  let st = decide(null, lim(85, reset), { now: t0 }).state;
+  const t1 = new Date(t0.getTime() + 5 * 60e3);           // +5 %/5 min = 1 %/min
+  const r = decide(st, lim(90, reset), { now: t1, nextCheckSec: 120 }); // 90 + 1 %/min × 5 min = 95
+  assert.equal(r.state.status, 'paused'); assert.equal(r.transition, 'pause'); assert.equal(r.state.kind, 'projected');
+  assert.match(r.state.reason, /rising 1\.0%\/min/);
+});
+test('decide: a fresh reading with real headroom lifts a pause early (account switch)', () => {
+  const now = new Date('2030-01-07T12:00:00Z');
+  const prev = { status: 'paused', kind: 'limit', reason: 'session 100%', percent: 100, resumes_at: '2030-01-07T13:00:00Z', updated_at: now.toISOString() };
+  const r = decide(prev, lim(26, new Date('2030-01-07T16:00:00Z')), { now });
+  assert.equal(r.state.status, 'ok'); assert.equal(r.transition, 'resume');
+  const stay = decide(prev, lim(90, new Date('2030-01-07T13:00:00Z')), { now });
+  assert.equal(stay.state.status, 'paused');               // 90 is not real headroom
+});
+test('decide: warn transition once at 80%', () => {
+  const now = new Date('2030-01-07T12:00:00Z');
+  const a = decide({ status: 'ok', percent: 70 }, lim(81, now), { now });
+  assert.equal(a.transition, 'warn'); assert.equal(a.state.warn, true);
+  assert.equal(decide(a.state, lim(82, now), { now: new Date(now.getTime() + 10e3) }).transition, null);
+});
+test('decideUnknown: pauses when unreadable near the limit, not when far', () => {
+  const now = new Date('2030-01-07T12:10:00Z');
+  const old = '2030-01-07T12:00:00Z';
+  const u = decideUnknown({ status: 'ok', percent: 89, updated_at: old }, { now });
+  assert.equal(u.state.status, 'paused'); assert.equal(u.state.kind, 'unknown');
+  assert.equal(decideUnknown({ status: 'ok', percent: 40, updated_at: old }, { now }), null);
 });

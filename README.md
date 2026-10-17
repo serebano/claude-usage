@@ -54,7 +54,7 @@ Exit codes: `0` ok, `2` token expired / not logged in, `3` network error.
 ## Auto pause at 95%, auto resume
 
 The monitor writes `~/.claude-usage/state.json`. The PreToolUse hook
-`hooks/pause-guard.mjs` **holds** every tool call while it says `paused` and releases it
+`hooks/pause-guard.mjs` **holds** every tool call while it says `paused` (pauses at 95%, earlier when usage is rising fast, and when it can't be read near the limit; above 80% it also refuses new subagents) and releases it
 once the monitor reports `ok` after the reset. Every session and subagent pauses
 mid-task and carries on by itself, with no lost work and no restart. The monitor notifies on
 pause and on resume and runs `--on-pause` / `--on-resume`. The hook reads only that local

@@ -8,7 +8,7 @@ import { homedir, platform } from 'node:os';
 import { dirname, join } from 'node:path';
 import {
   EXIT, defaultConfigDir, normalizeDir, getUsage, RateLimitError, parseUsage,
-  decide, nextIntervalSec, formatLine, formatReset, expandHome,
+  decide, decideUnknown, nextIntervalSec, formatLine, formatReset, expandHome,
 } from '../lib/core.mjs';
 
 const HELP = `Usage: claude-usage-monitor [options]
@@ -109,10 +109,19 @@ async function tick() {
   } catch (e) {
     if (e instanceof RateLimitError) rateLimit = e;
     log(`check failed (${e.code === EXIT.AUTH ? 'auth' : e.code === EXIT.NETWORK ? 'network' : 'error'}): ${e.message}`);
+    // Blind near the limit: pause rather than assume it's fine.
+    const u = decideUnknown(prev, { now: new Date() });
+    if (u) {
+      writeState(u.state);
+      log(`PAUSE ${u.state.reason}; re-check by ${u.state.resumes_at}`);
+      await notify('Claude usage: paused', `${u.state.reason}. Holding work until a fresh reading.`);
+      if (a['on-pause']) await run(a['on-pause'], { CLAUDE_USAGE_PERCENT: String(u.state.percent), CLAUDE_USAGE_REASON: u.state.reason, CLAUDE_USAGE_RESUMES_AT: u.state.resumes_at });
+      return { state: u.state, code: e.code ?? EXIT.ERROR };
+    }
     return { state: prev, code: e.code ?? EXIT.ERROR };
   }
   const now = new Date();
-  const { state, transition } = decide(prev, parsed, { threshold, now, includeScoped: !a['ignore-scoped'] });
+  const { state, transition } = decide(prev, parsed, { threshold, now, includeScoped: !a['ignore-scoped'], nextCheckSec: nextIntervalSec(prev, { base, threshold, now }) });
   writeState(state);
   const env = {
     CLAUDE_USAGE_PERCENT: String(state.percent), CLAUDE_USAGE_REASON: state.reason ?? '',
@@ -127,6 +136,9 @@ async function tick() {
     log(`RESUME ${formatLine(parsed, now)}`);
     await notify('Claude usage: resumed', `Limit reset. ${formatLine(parsed, now)}`);
     if (a['on-resume']) await run(a['on-resume'], env);
+  } else if (transition === 'warn') {
+    log(`WARN ${formatLine(parsed, now)}`);
+    await notify('Claude usage: above 80%', `${formatLine(parsed, now)}. New parallel agents are held; finish current work in small steps.`);
   } else if (a.once || process.stdout.isTTY) {
     console.log(`${now.toISOString()} ${state.status} ${formatLine(parsed, now)}`);
   }
@@ -145,7 +157,9 @@ while (!stopping) {
   const { state, code } = await tick();
   let sec = code === EXIT.OK ? nextIntervalSec(state, { base, threshold }) : base;
   if (rateLimit) {
-    backoffSec = Math.min(900, backoffSec ? backoffSec * 2 : 300);
+    // Back off, but stay responsive near the limit (the unknown-pause covers the gap).
+    const cap = (state?.percent ?? 0) >= 80 ? 180 : 900;
+    backoffSec = Math.min(cap, backoffSec ? backoffSec * 2 : Math.min(cap, 300));
     sec = Math.max(sec, backoffSec, rateLimit.retryAfterSec ?? 0);
     log(`rate-limited: next check in ${sec}s`);
   } else if (code === EXIT.OK) backoffSec = 0;
