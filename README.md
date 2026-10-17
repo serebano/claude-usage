@@ -14,6 +14,11 @@ Claude usage · max
   Fable     ██░░░░░░░░░░░░░░░░░░  10%
 ```
 
+
+In Claude Code, `/claude-usage` answers like this:
+
+![/claude-usage in Claude Code](docs/skill-output.png)
+
 ## Quick use
 
 ```bash
