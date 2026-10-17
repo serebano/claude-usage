@@ -1,10 +1,18 @@
 # claude-usage
 
-See your Claude Code subscription usage (5-hour session, weekly, and per-model weekly
-limits) from the terminal or from inside Claude, and pause all sessions at 95% until the
-limit resets. It reads the login Claude Code already stored and calls the same usage
-endpoint the CLI's `/usage` screen uses. Zero dependencies, Node 18+. It also works as a
-Claude Code skill, so Claude can check its own quota.
+**Let your Claude agents see their own usage and act on it.**
+
+Claude Code agents can't normally tell how much of their subscription quota is left, so
+they work blindly until they hit the limit and fail mid-task. claude-usage gives the agent
+that awareness. As a skill, Claude **queries its own usage at any moment** (5-hour
+session, weekly, per-model weekly) and plans around it:
+- it takes smaller steps and starts fewer parallel agents as the limit nears;
+- at **95%** every session and subagent **pauses itself**, and you get a notification;
+- after the reset it **resumes on its own**, right where it stopped.
+
+You can run the same check yourself from the terminal. It reuses the login Claude Code
+already stored and calls the endpoint behind the CLI's `/usage` screen. It has no
+dependencies and needs Node 18+.
 
 ```
 $ claude-usage
@@ -13,7 +21,6 @@ Claude usage · max
   Week      █████░░░░░░░░░░░░░░░  26%  Resets Fri 08:00
   Fable     ██░░░░░░░░░░░░░░░░░░  10%
 ```
-
 
 In Claude Code, `/claude-usage` answers like this:
 
