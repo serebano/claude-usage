@@ -16,8 +16,9 @@ const resumes = s.resumes_at ? new Date(s.resumes_at) : null;
 // running); do not hold work hostage to a stale file.
 if (!resumes || isNaN(resumes) || resumes <= new Date()) process.exit(0);
 
+const r = new Date(Math.round(resumes.getTime() / 60e3) * 60e3); // 07:59:59.8 -> 08:00
 const pad = (n) => String(n).padStart(2, '0');
-const at = `${resumes.toLocaleDateString('en-US', { weekday: 'short' })} ${pad(resumes.getHours())}:${pad(resumes.getMinutes())}`;
+const at = `${r.toLocaleDateString('en-US', { weekday: 'short' })} ${pad(r.getHours())}:${pad(r.getMinutes())}`;
 const limit = s.threshold ?? 95;
 process.stderr.write(
   `Usage limit ${limit}% reached (${s.reason || `${s.percent}%`}) — paused until ${at}; ` +

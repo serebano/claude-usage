@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1 — 2026-10-17
+
+- pause-guard: round the resume time to the nearest minute, matching `claude-usage`.
+
 ## 1.0.0 — 2026-10-17
 
 - `claude-usage`: session, weekly and per-model weekly usage from the token Claude Code already stores (macOS keychain or `.credentials.json`); `--json`, `--config-dir`, `--all`; exit codes 0/2/3.
