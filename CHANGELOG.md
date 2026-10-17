@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0 — 2026-10-17
+
+- Styled terminal output: a coloured bar per limit (green < 50 %, yellow < 80 %, red ≥ 80 %). Piped output and `--plain` keep the one-line format; `NO_COLOR` drops colours.
+- The skill reports usage as a compact Markdown block with bars.
+
 ## 1.1.0 — 2026-10-17
 
 - Session (5-hour) reset is shown relative: "resets in 1 hr 31 min".

@@ -8,7 +8,10 @@ Claude Code skill, so Claude can check its own quota.
 
 ```
 $ claude-usage
-session 28% (resets in 1 hr 31 min) · week 25% (resets Thu 08:00) · Fable 7%
+Claude usage · max
+  Session   ██████░░░░░░░░░░░░░░  30%  Resets in 1 hr 25 min
+  Week      █████░░░░░░░░░░░░░░░  26%  Resets Fri 08:00
+  Fable     ██░░░░░░░░░░░░░░░░░░  10%
 ```
 
 ## Quick use
@@ -23,6 +26,7 @@ npx github:serebano/claude-usage
 
 ```bash
 claude-usage                          # one-line summary (local time)
+claude-usage --plain                             # one line (default when piped)
 claude-usage --json                   # machine-readable
 claude-usage --config-dir ~/.claude-2 # a specific CLAUDE_CONFIG_DIR
 claude-usage --all                    # every ~/.claude* config dir

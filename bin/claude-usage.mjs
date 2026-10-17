@@ -5,12 +5,13 @@ import { parseArgs } from 'node:util';
 import { basename } from 'node:path';
 import {
   EXIT, defaultConfigDir, normalizeDir, findConfigDirs, readCredentials,
-  fetchUsage, parseUsage, formatLine, toJSON,
+  fetchUsage, parseUsage, formatLine, formatPretty, toJSON,
 } from '../lib/core.mjs';
 
 const HELP = `Usage: claude-usage [options]
 
   --json              machine-readable output
+  --plain             one line, no colours (default when not a terminal)
   --config-dir <dir>  Claude config dir (default: $CLAUDE_CONFIG_DIR or ~/.claude)
   --all               every config dir found (~/.claude and ~/.claude-*)
   -h, --help          show this help
@@ -21,7 +22,7 @@ let args;
 try {
   args = parseArgs({
     options: {
-      json: { type: 'boolean' }, all: { type: 'boolean' },
+      json: { type: 'boolean' }, plain: { type: 'boolean' }, all: { type: 'boolean' },
       'config-dir': { type: 'string' }, help: { type: 'boolean', short: 'h' },
     },
   }).values;
@@ -46,6 +47,15 @@ if (args.json) {
     ? { config_dir: r.dir, error: r.error, exit_code: r.code }
     : toJSON(r.parsed, { config_dir: r.dir, subscription: r.subscription }));
   console.log(JSON.stringify(args.all ? out : out[0], null, 2));
+} else if (!args.plain && process.stdout.isTTY) {
+  // Interactive terminal: styled bars (NO_COLOR keeps the layout, drops colour).
+  const color = !process.env.NO_COLOR;
+  const blocks = results.map((r) => {
+    const title = args.all ? basename(r.dir) : `Claude usage${r.subscription ? ' · ' + r.subscription : ''}`;
+    if (r.error) return `${color ? '\x1b[1m' + title + '\x1b[0m' : title}\n  ${color ? '\x1b[31m' + r.error + '\x1b[0m' : r.error}`;
+    return formatPretty(r.parsed, { color, title });
+  });
+  console.log(blocks.join('\n\n'));
 } else {
   for (const r of results) {
     const prefix = args.all ? `${basename(r.dir).padEnd(10)} ` : '';

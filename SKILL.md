@@ -14,9 +14,20 @@ Scripts live next to this file. `<skill dir>` below is this skill's base directo
 node "<skill dir>/bin/claude-usage.mjs" --json
 ```
 
-Report one short line: each limit's percent and its reset time in local time, for example
-`session 28% (resets in 1 hr 31 min) · week 25% (resets Thu 08:00) · Fable 7%`. Without `--json` it
-prints that line itself. If `CLAUDE_CONFIG_DIR` is set it is used; otherwise pass
+Report it as a small Markdown block, one row per limit, with a 10-cell bar
+(`█` filled, `░` empty), the percent in bold, and the reset (session relative, others local time):
+
+```
+**Claude usage**
+`Session ███░░░░░░░` **30%** · resets in 1 hr 25 min
+`Week    ███░░░░░░░` **26%** · resets Fri 08:00
+`Fable   █░░░░░░░░░` **10%**
+```
+
+Add ⚠️ after the percent at 80% or more, 🛑 at 95% or more. In a terminal the CLI prints
+coloured bars itself; piped or with `--plain` it prints one line
+(`session 30% (resets in 1 hr 25 min) · week 26% (resets Fri 08:00) · Fable 10%`).
+If `CLAUDE_CONFIG_DIR` is set it is used; otherwise pass
 `--config-dir <dir>`. `--all` checks every `~/.claude*` config dir.
 
 Exit codes: `0` ok · `2` token expired or not logged in (it refreshes the next time Claude

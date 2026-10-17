@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import {
-  keychainServiceNames, parseUsage, formatLine, formatReset, formatResetIn, decide, nextIntervalSec,
+  keychainServiceNames, parseUsage, formatLine, formatReset, formatResetIn, formatPretty, decide, nextIntervalSec,
   fetchUsage, readCredentials, AuthError, NetworkError, normalizeDir,
 } from '../lib/core.mjs';
 
@@ -114,4 +114,17 @@ test('formatResetIn: session reset as relative time', () => {
   assert.equal(formatResetIn(new Date(2030, 0, 7, 16, 31), now), 'in 1 hr 31 min');
   assert.equal(formatResetIn(new Date(2030, 0, 7, 15, 45), now), 'in 45 min');
   assert.equal(formatResetIn(new Date(2030, 0, 7, 17, 0), now), 'in 2 hr');
+});
+
+test('formatPretty: bars, percent and session reset without colour', () => {
+  const now = new Date(2030, 0, 7, 15, 0);
+  const parsed = { limits: [
+    { label: 'session', kind: 'session', percent: 30, resetsAt: new Date(2030, 0, 7, 16, 31), scoped: false },
+    { label: 'week', kind: 'weekly_all', percent: 85, resetsAt: new Date(2030, 0, 10, 8, 0), scoped: false },
+  ] };
+  const out = formatPretty(parsed, { now, color: false, width: 10 }).split('\n');
+  assert.equal(out[0], 'Claude usage');
+  assert.equal(out[1], '  Session   ███░░░░░░░  30%  Resets in 1 hr 31 min');
+  assert.equal(out[2], '  Week      █████████░  85%  Resets Thu 08:00');
+  assert.ok(!out.join('').includes('\x1b['));
 });
