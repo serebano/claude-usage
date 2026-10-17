@@ -104,7 +104,12 @@ async function tick() {
   let parsed;
   try {
     const u = await getUsage(configDir, { maxAgeMs: 30e3 });
-    if (u.rateLimited) rateLimit = u.rateLimited;
+    if (u.rateLimited) {
+      // A stale cached answer is NOT a fresh reading: don't let it refresh updated_at or the
+      // burn-rate history, or the blind-near-limit pause can never trigger (2026-10-17 21:07-21:27Z).
+      rateLimit = u.rateLimited;
+      throw u.rateLimited;
+    }
     parsed = parseUsage(u.json);
   } catch (e) {
     if (e instanceof RateLimitError) rateLimit = e;

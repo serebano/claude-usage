@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.1 — 2026-10-18
+
+- Monitor: a stale cached answer served during HTTP 429 no longer counts as a fresh reading. It used to refresh `updated_at` and the burn-rate history, so the blind-near-limit pause never fired and the pause came only at exactly 95%.
+
 ## 1.5.0 — 2026-10-17
 
 Fixes a missed auto-pause: the window burned from 89% to 100% while the monitor was blind on HTTP 429s.
