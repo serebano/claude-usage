@@ -38,6 +38,7 @@ npx github:serebano/claude-usage
 
 ```bash
 claude-usage                          # one-line summary (local time)
+claude-usage --fresh                             # skip the shared 60 s cache
 claude-usage --plain                             # one line (default when piped)
 claude-usage --json                   # machine-readable
 claude-usage --config-dir ~/.claude-2 # a specific CLAUDE_CONFIG_DIR

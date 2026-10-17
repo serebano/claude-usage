@@ -85,8 +85,8 @@ test('decide: stays paused before reset, resumes after reset when below threshol
 
 test('nextIntervalSec: faster near threshold, wakes after reset when paused', () => {
   assert.equal(nextIntervalSec({ percent: 20 }, { base: 120 }), 120);
-  assert.equal(nextIntervalSec({ percent: 85 }, { base: 120 }), 60);
-  assert.equal(nextIntervalSec({ percent: 92 }, { base: 120 }), 30);
+  assert.equal(nextIntervalSec({ percent: 85 }, { base: 120 }), 90);
+  assert.equal(nextIntervalSec({ percent: 92 }, { base: 120 }), 60); // never below 60 s (endpoint 429s)
   const now = new Date('2030-01-07T13:29:00Z');
   assert.equal(nextIntervalSec({ status: 'paused', resumes_at: '2030-01-07T13:30:00Z' }, { base: 120, now }), 65);
 });
@@ -127,4 +127,28 @@ test('formatPretty: bars, percent and session reset without colour', () => {
   assert.equal(out[1], '  Session   ███░░░░░░░  30%  Resets in 1 hr 31 min');
   assert.equal(out[2], '  Week      █████████░  85%  Resets Thu 08:00');
   assert.ok(!out.join('').includes('\x1b['));
+});
+
+test('fetchUsage: HTTP 429 is a RateLimitError carrying Retry-After', async () => {
+  const { fetchUsage, RateLimitError } = await import('../lib/core.mjs');
+  const creds = { accessToken: 'x', expiresAt: Date.now() + 3600e3 };
+  const res = { status: 429, ok: false, headers: { get: (h) => (h === 'retry-after' ? '120' : null) } };
+  await assert.rejects(fetchUsage(creds, { fetchImpl: async () => res }), (e) => e instanceof RateLimitError && e.retryAfterSec === 120);
+});
+
+test('getUsage: fresh cache is reused; on 429 a recent cache is returned as stale', async () => {
+  const { getUsage, cachePath } = await import('../lib/core.mjs');
+  const { mkdtempSync, writeFileSync, mkdirSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join, dirname } = await import('node:path');
+  process.env.CLAUDE_USAGE_CACHE_DIR = mkdtempSync(join(tmpdir(), 'cu-cache-'));
+  const dir = '/nonexistent/.claude-test';
+  const now = Date.parse('2030-01-07T12:00:00Z');
+  const p = cachePath(dir); mkdirSync(dirname(p), { recursive: true });
+  writeFileSync(p, JSON.stringify({ fetched_at: new Date(now - 30e3).toISOString(), json: { five_hour: { utilization: 42 } } }));
+  let called = 0;
+  const fresh = await getUsage(dir, { now, fetchImpl: async () => { called++; } });
+  assert.equal(fresh.cached, true); assert.equal(called, 0);
+  assert.equal(fresh.json.five_hour.utilization, 42);
+  delete process.env.CLAUDE_USAGE_CACHE_DIR;
 });

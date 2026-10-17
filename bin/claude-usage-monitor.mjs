@@ -7,7 +7,7 @@ import { mkdirSync, readFileSync, writeFileSync, renameSync, appendFileSync } fr
 import { homedir, platform } from 'node:os';
 import { dirname, join } from 'node:path';
 import {
-  EXIT, defaultConfigDir, normalizeDir, readCredentials, fetchUsage, parseUsage,
+  EXIT, defaultConfigDir, normalizeDir, getUsage, RateLimitError, parseUsage,
   decide, nextIntervalSec, formatLine, formatReset, expandHome,
 } from '../lib/core.mjs';
 
@@ -95,12 +95,19 @@ async function notify(title, body) {
 }
 function shellQuote(s) { return `'${String(s).replace(/'/g, `'\\''`)}'`; }
 
+let rateLimit = null; // set when the endpoint answered 429 during this tick
+let backoffSec = 0;   // grows on consecutive 429s: 300, 600, 900 (cap)
+
 async function tick() {
+  rateLimit = null;
   const prev = readState();
   let parsed;
   try {
-    parsed = parseUsage(await fetchUsage(readCredentials(configDir)));
+    const u = await getUsage(configDir, { maxAgeMs: 30e3 });
+    if (u.rateLimited) rateLimit = u.rateLimited;
+    parsed = parseUsage(u.json);
   } catch (e) {
+    if (e instanceof RateLimitError) rateLimit = e;
     log(`check failed (${e.code === EXIT.AUTH ? 'auth' : e.code === EXIT.NETWORK ? 'network' : 'error'}): ${e.message}`);
     return { state: prev, code: e.code ?? EXIT.ERROR };
   }
@@ -136,6 +143,11 @@ let stopping = false;
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { stopping = true; log('monitor stopped'); process.exit(0); });
 while (!stopping) {
   const { state, code } = await tick();
-  const sec = code === EXIT.OK ? nextIntervalSec(state, { base, threshold }) : base;
+  let sec = code === EXIT.OK ? nextIntervalSec(state, { base, threshold }) : base;
+  if (rateLimit) {
+    backoffSec = Math.min(900, backoffSec ? backoffSec * 2 : 300);
+    sec = Math.max(sec, backoffSec, rateLimit.retryAfterSec ?? 0);
+    log(`rate-limited: next check in ${sec}s`);
+  } else if (code === EXIT.OK) backoffSec = 0;
   await new Promise((r) => setTimeout(r, sec * 1000));
 }

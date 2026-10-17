@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.0 — 2026-10-17
+
+- Shared 60 s on-disk cache (`~/.claude-usage/cache/`): the CLI, skill, monitor and other tools reuse one recent answer instead of each calling the rate-limited endpoint. `--fresh` bypasses it.
+- HTTP 429 handling: `RateLimitError` honours `Retry-After`; the monitor backs off 5 → 10 → 15 min and keeps the last known state; a recent cached answer is served (marked stale) instead of an error.
+- Near the threshold the monitor polls at most once a minute (was every 30 s, which triggered 429s).
+
 ## 1.3.0 — 2026-10-17
 
 - pause-guard now holds tool calls while paused and releases them after the reset, so work resumes automatically where it stopped. `CLAUDE_USAGE_GUARD=block` keeps the old stop-the-turn behaviour.

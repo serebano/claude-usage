@@ -5,7 +5,7 @@ import { parseArgs } from 'node:util';
 import { basename } from 'node:path';
 import {
   EXIT, defaultConfigDir, normalizeDir, findConfigDirs, readCredentials,
-  fetchUsage, parseUsage, formatLine, formatPretty, toJSON,
+  getUsage, parseUsage, formatLine, formatPretty, toJSON,
 } from '../lib/core.mjs';
 
 const HELP = `Usage: claude-usage [options]
@@ -14,6 +14,7 @@ const HELP = `Usage: claude-usage [options]
   --plain             one line, no colours (default when not a terminal)
   --config-dir <dir>  Claude config dir (default: $CLAUDE_CONFIG_DIR or ~/.claude)
   --all               every config dir found (~/.claude and ~/.claude-*)
+  --fresh             skip the shared 60 s cache and ask the API now
   -h, --help          show this help
 
 Exit codes: 0 ok, 2 expired/unauthenticated, 3 network error.`;
@@ -22,7 +23,7 @@ let args;
 try {
   args = parseArgs({
     options: {
-      json: { type: 'boolean' }, plain: { type: 'boolean' }, all: { type: 'boolean' },
+      json: { type: 'boolean' }, fresh: { type: 'boolean' }, plain: { type: 'boolean' }, all: { type: 'boolean' },
       'config-dir': { type: 'string' }, help: { type: 'boolean', short: 'h' },
     },
   }).values;
@@ -32,7 +33,8 @@ if (args.help) { console.log(HELP); process.exit(0); }
 async function query(dir) {
   try {
     const creds = readCredentials(dir);
-    const parsed = parseUsage(await fetchUsage(creds));
+    const u = await getUsage(dir, { maxAgeMs: args.fresh ? 0 : 60e3 });
+    const parsed = parseUsage(u.json);
     return { dir, parsed, subscription: creds.subscriptionType };
   } catch (e) {
     return { dir, error: e.message, code: e.code ?? EXIT.ERROR };
