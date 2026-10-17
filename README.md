@@ -43,13 +43,15 @@ claude-usage-monitor --on-pause 'say paused' --on-resume 'say resumed'
 From a clone, use `node bin/claude-usage.mjs` (or `npm link` once to get the commands).
 Exit codes: `0` ok, `2` token expired / not logged in, `3` network error.
 
-## Pause at 95%
+## Auto pause at 95%, auto resume
 
 The monitor writes `~/.claude-usage/state.json`. The PreToolUse hook
-`hooks/pause-guard.mjs` blocks tool calls while it says `paused`, so every session and
-agent stops cleanly with "Usage limit 95% reached — paused until <time>" instead of
-failing mid-task. After the reset the monitor sets `ok`, notifies, and runs `--on-resume`
-(use it to nudge your sessions). The hook reads only that local file and fails open.
+`hooks/pause-guard.mjs` **holds** every tool call while it says `paused` and releases it
+once the monitor reports `ok` after the reset. Every session and subagent pauses
+mid-task and carries on by itself, with no lost work and no restart. The monitor notifies on
+pause and on resume and runs `--on-pause` / `--on-resume`. The hook reads only that local
+file and fails open. Give it a long `timeout` (604800 s = 7 days) so a hold can outlast
+a weekly reset. `CLAUDE_USAGE_GUARD=block` stops the turn instead; `off` disables it.
 Enable it with [`examples/settings.hooks.json`](examples/settings.hooks.json); run the
 monitor as a service with the launchd/systemd/cron templates in [`examples/`](examples/).
 Notifications: macOS Notification Center, `notify-send` on Linux, and Telegram when
