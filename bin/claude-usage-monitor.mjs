@@ -14,6 +14,7 @@ import {
 const HELP = `Usage: claude-usage-monitor [options]
 
   --threshold <pct>    pause at this percent (default 95)
+  --threshold-weekly <pct>  pause weekly limits at this percent (default: --threshold)
   --interval <sec>     base poll interval (default 120; faster near the threshold)
   --config-dir <dir>   Claude config dir (default: $CLAUDE_CONFIG_DIR or ~/.claude)
   --state <file>       state file (default ~/.claude-usage/state.json)
@@ -32,7 +33,7 @@ let a;
 try {
   a = parseArgs({
     options: {
-      threshold: { type: 'string', default: '95' }, interval: { type: 'string', default: '120' },
+      threshold: { type: 'string', default: '95' }, 'threshold-weekly': { type: 'string' }, interval: { type: 'string', default: '120' },
       'config-dir': { type: 'string' }, state: { type: 'string' }, log: { type: 'string' },
       'on-pause': { type: 'string' }, 'on-resume': { type: 'string' },
       'ignore-scoped': { type: 'boolean' }, 'no-notify': { type: 'boolean' },
@@ -43,6 +44,7 @@ try {
 if (a.help) { console.log(HELP); process.exit(0); }
 
 const threshold = Number(a.threshold);
+const weeklyThreshold = a['threshold-weekly'] != null ? Number(a['threshold-weekly']) : null;
 const base = Math.max(15, Number(a.interval) || 120);
 const configDir = a['config-dir'] ? normalizeDir(a['config-dir']) : defaultConfigDir();
 const home = join(homedir(), '.claude-usage');
@@ -126,7 +128,7 @@ async function tick() {
     return { state: prev, code: e.code ?? EXIT.ERROR };
   }
   const now = new Date();
-  const { state, transition } = decide(prev, parsed, { threshold, now, includeScoped: !a['ignore-scoped'], nextCheckSec: nextIntervalSec(prev, { base, threshold, now }) });
+  const { state, transition } = decide(prev, parsed, { threshold, weeklyThreshold, now, includeScoped: !a['ignore-scoped'], nextCheckSec: nextIntervalSec(prev, { base, threshold, now }) });
   writeState(state);
   const env = {
     CLAUDE_USAGE_PERCENT: String(state.percent), CLAUDE_USAGE_REASON: state.reason ?? '',

@@ -44,6 +44,7 @@ claude-usage --json                   # machine-readable
 claude-usage --config-dir ~/.claude-2 # a specific CLAUDE_CONFIG_DIR
 claude-usage --all                    # every ~/.claude* config dir
 claude-usage-monitor --threshold 95   # pause at 95%, notify, resume after reset
+claude-usage-monitor --threshold 95 --threshold-weekly 97   # weekly limits pause at 97%
 claude-usage-monitor --once           # single check, for cron/timers
 claude-usage-monitor --on-pause 'say paused' --on-resume 'say resumed'
 ```

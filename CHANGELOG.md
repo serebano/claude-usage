@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.0 — 2026-11-12
+
+- Monitor: `--threshold-weekly <pct>` pauses weekly limits (all-models and per-model) at their own threshold, so a week can run to e.g. 97% while the 5-hour session still pauses at 95%.
+- Guard: new subagents are held 5 points before each limit's own pause threshold (`hold_agents` in the state file) instead of at a flat 80%, so a week at 80-90% no longer blocks helpers for days. Old state files keep the `warn` behaviour.
+
 ## 1.5.1 — 2026-10-18
 
 - Monitor: a stale cached answer served during HTTP 429 no longer counts as a fresh reading. It used to refresh `updated_at` and the burn-rate history, so the blind-near-limit pause never fired and the pause came only at exactly 95%.

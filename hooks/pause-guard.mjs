@@ -4,7 +4,7 @@
 // paused  -> the tool call is held: the hook waits (re-reading the state every 15 s)
 //            until the monitor reports "ok" or the reset has passed, then allows it.
 //            Sessions and subagents pause and continue by themselves: auto pause, auto resume.
-// warn    -> (usage >= 80 %) starting NEW subagents (Agent/Task tools) is refused, so a
+// hold    -> (5 points before a limit's pause threshold; old states: warn >= 80 %) starting NEW subagents (Agent/Task tools) is refused, so a
 //            nearly spent window is not burned faster; other tools run normally.
 //
 // CLAUDE_USAGE_GUARD=block  exit 2 instead of waiting (Claude stops its turn)
@@ -42,9 +42,9 @@ try { tool = JSON.parse(readFileSync(0, 'utf8') || '{}').tool_name || ''; } catc
 if (mode === 'off') process.exit(0);
 
 const st = readState();
-if (st?.status === 'ok' && st.warn && fresh(st) && AGENT_TOOLS.has(tool)) {
+if (st?.status === 'ok' && (st.hold_agents ?? st.warn) && fresh(st) && AGENT_TOOLS.has(tool)) {
   process.stderr.write(
-    `Usage is at ${Math.round(st.percent)}% (>= 80%): starting new subagents is held to protect the window. ` +
+    `Usage is at ${Math.round(st.percent)}%, near a pause threshold: starting new subagents is held to protect the window. ` +
     `Continue the work yourself in small steps, or wait for the reset.\n`,
   );
   process.exit(2);
@@ -61,7 +61,7 @@ const why = first.state.reason || `${first.state.percent}%`;
 if (mode === 'block') {
   process.stderr.write(
     `Usage limit ${first.state.threshold ?? 95}% reached (${why}) — paused until ${at}. ` +
-    `Stop here: save progress notes, do not retry tool calls, and tell the user where you stopped.\n`,
+    `Tools are paused, but you can still reply: answer the user in text (what is running, where you stopped, when it resumes); do not retry tool calls until then.\n`,
   );
   process.exit(2);
 }

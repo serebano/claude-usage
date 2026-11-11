@@ -73,6 +73,22 @@ test('decide: scoped model limit counts unless ignored', () => {
   assert.equal(decide(null, reading(10, 10, 97), { now, includeScoped: false }).transition, null);
 });
 
+test('decide: --threshold-weekly lets weekly limits run past the session threshold', () => {
+  const now = new Date('2030-01-07T10:00:00Z');
+  assert.equal(decide(null, reading(10, 96), { threshold: 95, now }).transition, 'pause');
+  const later = decide(null, reading(10, 96), { threshold: 95, weeklyThreshold: 97, now });
+  assert.notEqual(later.transition, 'pause'); assert.equal(later.state.status, 'ok');
+  assert.equal(decide(null, reading(10, 97), { threshold: 95, weeklyThreshold: 97, now }).transition, 'pause');
+  assert.equal(decide(null, reading(96, 10), { threshold: 95, weeklyThreshold: 97, now }).transition, 'pause');
+});
+
+test('decide: new subagents are held 5 points before each limit\'s own threshold', () => {
+  const now = new Date('2030-01-07T10:00:00Z');
+  assert.equal(decide(null, reading(10, 85), { threshold: 95, weeklyThreshold: 97, now }).state.hold_agents, false);
+  assert.equal(decide(null, reading(10, 92), { threshold: 95, weeklyThreshold: 97, now }).state.hold_agents, true);
+  assert.equal(decide(null, reading(90, 10), { threshold: 95, now }).state.hold_agents, true);
+});
+
 test('decide: stays paused near the limit before reset, resumes after reset or with real headroom', () => {
   const paused = { status: 'paused', kind: 'limit', resumes_at: '2030-01-07T13:30:00.000Z', percent: 96 };
   const before = decide(paused, reading(90, 40), { now: new Date('2030-01-07T13:00:00Z') });
