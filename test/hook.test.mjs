@@ -57,3 +57,18 @@ test('a stale paused state (monitor not updating) is not trusted', () => {
   const old = new Date(Date.now() - 30 * 60e3).toISOString();
   assert.equal(run({ status: 'paused', percent: 99, resumes_at: future, updated_at: old }).status, 0);
 });
+
+test('chat mode: main session keeps working while paused; subagents and spawns are refused', () => {
+  const f = file(); write(f, { status: 'paused', reason: 'week 97%', percent: 97, threshold: 97, resumes_at: future, updated_at: upd });
+  const go = (input) => spawnSync(process.execPath, [hook], { env: { ...process.env, CLAUDE_USAGE_STATE: f, CLAUDE_USAGE_GUARD: 'chat' }, input: JSON.stringify(input), encoding: 'utf8', timeout: 10e3 });
+  assert.equal(go({ tool_name: 'Bash' }).status, 0);
+  assert.equal(go({ tool_name: 'Agent' }).status, 2);
+  assert.equal(go({ tool_name: 'Workflow' }).status, 2);
+  const sub = go({ tool_name: 'Bash', agent_id: 'a1' });
+  assert.equal(sub.status, 2); assert.match(sub.stderr, /paused until/);
+});
+test('chat mode: no subagent hold before the pause', () => {
+  const f = file(); write(f, { status: 'ok', hold_agents: true, percent: 93, updated_at: upd });
+  const r = spawnSync(process.execPath, [hook], { env: { ...process.env, CLAUDE_USAGE_STATE: f, CLAUDE_USAGE_GUARD: 'chat' }, input: JSON.stringify({ tool_name: 'Agent' }), encoding: 'utf8', timeout: 10e3 });
+  assert.equal(r.status, 0);
+});

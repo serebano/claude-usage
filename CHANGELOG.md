@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.0 — 2026-11-25
+
+- Guard: `CLAUDE_USAGE_GUARD=chat`. While paused, subagents and new subagents are refused, but the main session keeps its tools, so the user can keep chatting. No early subagent hold in this mode.
+- Monitor: `--exact` pauses only at the threshold: no early pause on a projected rise, and an unreadable endpoint pauses only within 2 points of the threshold.
+
 ## 1.6.0 — 2026-11-12
 
 - Monitor: `--threshold-weekly <pct>` pauses weekly limits (all-models and per-model) at their own threshold, so a week can run to e.g. 97% while the 5-hour session still pauses at 95%.

@@ -8,6 +8,9 @@
 //            nearly spent window is not burned faster; other tools run normally.
 //
 // CLAUDE_USAGE_GUARD=block  exit 2 instead of waiting (Claude stops its turn)
+// CLAUDE_USAGE_GUARD=chat   while paused: subagents' tool calls and new subagents are refused, the
+//                           main session keeps its tools so the user can keep chatting; no
+//                           early subagent hold before the pause
 // CLAUDE_USAGE_GUARD=off    allow everything
 // Anything unreadable, stale (monitor not updating) or past its reset -> allow (fail open).
 import { readFileSync } from 'node:fs';
@@ -21,6 +24,7 @@ const POLL_MS = Number(process.env.CLAUDE_USAGE_GUARD_POLL_MS) || 15e3;
 const GRACE_MS = 60e3;            // let the monitor confirm the reset before work restarts
 const STALE_MS = 20 * 60e3;       // a state the monitor stopped updating is not trusted
 const AGENT_TOOLS = new Set(['Agent', 'Task']);
+const SPAWN_TOOLS = new Set([...AGENT_TOOLS, 'Workflow']);
 
 function readState() {
   try { return JSON.parse(readFileSync(path, 'utf8')); } catch { return null; }
@@ -37,12 +41,17 @@ function pausedUntil() {
 }
 
 let tool = '';
-try { tool = JSON.parse(readFileSync(0, 'utf8') || '{}').tool_name || ''; } catch { /* no input */ }
+let inSubagent = false;
+try {
+  const input = JSON.parse(readFileSync(0, 'utf8') || '{}');
+  tool = input.tool_name || '';
+  inSubagent = !!input.agent_id; // present only when the call comes from a subagent
+} catch { /* no input */ }
 
 if (mode === 'off') process.exit(0);
 
 const st = readState();
-if (st?.status === 'ok' && (st.hold_agents ?? st.warn) && fresh(st) && AGENT_TOOLS.has(tool)) {
+if (mode !== 'chat' && st?.status === 'ok' && (st.hold_agents ?? st.warn) && fresh(st) && AGENT_TOOLS.has(tool)) {
   process.stderr.write(
     `Usage is at ${Math.round(st.percent)}%, near a pause threshold: starting new subagents is held to protect the window. ` +
     `Continue the work yourself in small steps, or wait for the reset.\n`,
@@ -57,6 +66,16 @@ const r = new Date(Math.round(first.resumes.getTime() / 60e3) * 60e3); // 07:59:
 const pad = (n) => String(n).padStart(2, '0');
 const at = `${r.toLocaleDateString('en-US', { weekday: 'short' })} ${pad(r.getHours())}:${pad(r.getMinutes())}`;
 const why = first.state.reason || `${first.state.percent}%`;
+
+if (mode === 'chat') {
+  if (!inSubagent && !SPAWN_TOOLS.has(tool)) process.exit(0);
+  process.stderr.write(
+    `Usage limit reached (${why}): helpers are paused until ${at}. ` +
+    (inSubagent ? 'Stop now and report where you stopped; do not retry tool calls.\n'
+      : 'The main session still works: answer the user and keep to small steps, without new subagents.\n'),
+  );
+  process.exit(2);
+}
 
 if (mode === 'block') {
   process.stderr.write(

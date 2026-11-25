@@ -60,7 +60,7 @@ once the monitor reports `ok` after the reset. Every session and subagent pauses
 mid-task and carries on by itself, with no lost work and no restart. The monitor notifies on
 pause and on resume and runs `--on-pause` / `--on-resume`. The hook reads only that local
 file and fails open. Give it a long `timeout` (604800 s = 7 days) so a hold can outlast
-a weekly reset. `CLAUDE_USAGE_GUARD=block` stops the turn instead; `off` disables it.
+a weekly reset. `CLAUDE_USAGE_GUARD=chat` pauses only subagents and keeps the main session usable (pair it with the monitor's `--exact`). `CLAUDE_USAGE_GUARD=block` stops the turn instead; `off` disables it.
 Enable it with [`examples/settings.hooks.json`](examples/settings.hooks.json); run the
 monitor as a service with the launchd/systemd/cron templates in [`examples/`](examples/).
 Notifications: macOS Notification Center, `notify-send` on Linux, and Telegram when

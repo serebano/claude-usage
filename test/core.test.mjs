@@ -201,3 +201,12 @@ test('decideUnknown: pauses when unreadable near the limit, not when far', () =>
   assert.equal(u.state.status, 'paused'); assert.equal(u.state.kind, 'unknown');
   assert.equal(decideUnknown({ status: 'ok', percent: 40, updated_at: old }, { now }), null);
 });
+
+test('exact: a fast rise below the threshold does not pause; reaching it does', () => {
+  const now = new Date('2026-11-25T15:10:00Z');
+  const lim = (percent) => ({ limits: [{ kind: 'weekly_all', label: 'week', percent, resetsAt: new Date('2026-12-02T10:00:00Z') }] });
+  const prev = { status: 'ok', percent: 90, history: [{ t: '2026-11-25T15:08:00Z', p: { 'weekly_all:week': 92 } }] };
+  assert.equal(decide(prev, lim(96), { threshold: 97, now }).state.status, 'paused');
+  assert.equal(decide(prev, lim(96), { threshold: 97, now, exact: true }).state.status, 'ok');
+  assert.equal(decide(prev, lim(97), { threshold: 97, now, exact: true }).state.status, 'paused');
+});

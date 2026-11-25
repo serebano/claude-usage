@@ -15,6 +15,8 @@ const HELP = `Usage: claude-usage-monitor [options]
 
   --threshold <pct>    pause at this percent (default 95)
   --threshold-weekly <pct>  pause weekly limits at this percent (default: --threshold)
+  --exact              pause only at the threshold (no early pause on a projected rise;
+                       an unreadable read pauses only within 2 points of the threshold)
   --interval <sec>     base poll interval (default 120; faster near the threshold)
   --config-dir <dir>   Claude config dir (default: $CLAUDE_CONFIG_DIR or ~/.claude)
   --state <file>       state file (default ~/.claude-usage/state.json)
@@ -33,7 +35,7 @@ let a;
 try {
   a = parseArgs({
     options: {
-      threshold: { type: 'string', default: '95' }, 'threshold-weekly': { type: 'string' }, interval: { type: 'string', default: '120' },
+      threshold: { type: 'string', default: '95' }, 'threshold-weekly': { type: 'string' }, exact: { type: 'boolean' }, interval: { type: 'string', default: '120' },
       'config-dir': { type: 'string' }, state: { type: 'string' }, log: { type: 'string' },
       'on-pause': { type: 'string' }, 'on-resume': { type: 'string' },
       'ignore-scoped': { type: 'boolean' }, 'no-notify': { type: 'boolean' },
@@ -117,7 +119,7 @@ async function tick() {
     if (e instanceof RateLimitError) rateLimit = e;
     log(`check failed (${e.code === EXIT.AUTH ? 'auth' : e.code === EXIT.NETWORK ? 'network' : 'error'}): ${e.message}`);
     // Blind near the limit: pause rather than assume it's fine.
-    const u = decideUnknown(prev, { now: new Date() });
+    const u = decideUnknown(prev, { now: new Date(), ...(a.exact ? { nearAt: Math.max(threshold, weeklyThreshold ?? 0) - 2 } : {}) });
     if (u) {
       writeState(u.state);
       log(`PAUSE ${u.state.reason}; re-check by ${u.state.resumes_at}`);
@@ -128,7 +130,7 @@ async function tick() {
     return { state: prev, code: e.code ?? EXIT.ERROR };
   }
   const now = new Date();
-  const { state, transition } = decide(prev, parsed, { threshold, weeklyThreshold, now, includeScoped: !a['ignore-scoped'], nextCheckSec: nextIntervalSec(prev, { base, threshold, now }) });
+  const { state, transition } = decide(prev, parsed, { threshold, weeklyThreshold, now, includeScoped: !a['ignore-scoped'], exact: !!a.exact, nextCheckSec: nextIntervalSec(prev, { base, threshold, now }) });
   writeState(state);
   const env = {
     CLAUDE_USAGE_PERCENT: String(state.percent), CLAUDE_USAGE_REASON: state.reason ?? '',

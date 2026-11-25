@@ -60,7 +60,7 @@ in the future, then lets it run once the monitor reports `ok` (or the reset has 
 Sessions and subagents pause at 95% and continue by themselves after the reset; nothing
 is lost. It reads only the local state file and allows everything if the file is missing,
 corrupt or stale. The long hook `timeout` lets a hold last until a weekly reset.
-`CLAUDE_USAGE_GUARD=block` stops the turn instead (exit 2); `off` disables it.
+`CLAUDE_USAGE_GUARD=chat` pauses only subagents and keeps the main session usable (pair it with the monitor's `--exact`). `CLAUDE_USAGE_GUARD=block` stops the turn instead (exit 2); `off` disables it.
 
 Enable it only when the user asks. Add to `settings.json` (see `examples/settings.hooks.json`):
 
